@@ -1,0 +1,5 @@
+{
+  "name": "Mobile Tech CRM Document Analyzer",
+  "description": "An application to upload and analyze scanned business documents for a mobile tech CRM using Gemini. It extracts key customer, device, and payment information from images.",
+  "requestFramePermissions": []
+}
