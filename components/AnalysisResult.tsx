@@ -5,7 +5,7 @@ interface AnalysisResultProps {
   data: ExtractedData;
 }
 
-const ResultRow: React.FC<{ label: string; value: string | null }> = ({ label, value }) => {
+const ResultRow: React.FC<{ label: string; value: string | null | undefined }> = ({ label, value }) => {
     if (!value) return null;
 
     return (
@@ -18,7 +18,7 @@ const ResultRow: React.FC<{ label: string; value: string | null }> = ({ label, v
 
 
 export const AnalysisResult: React.FC<AnalysisResultProps> = ({ data }) => {
-  const formattedData: { label: string; value: string | null }[] = [
+  const formattedData: { label: string; value: string | null | undefined }[] = [
     { label: "Scan ID", value: data.scan_id },
     { label: "Generated Customer ID", value: data.customer_id },
     { label: "Generated Transaction ID", value: data.transaction_id },
@@ -35,6 +35,10 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({ data }) => {
     { label: "Plan Term", value: data.plan_term },
     { label: "Payment Breakdown", value: data.payment_breakdown },
     { label: "Total Payment", value: data.total_payment_amount },
+    // Porting Details
+    { label: "Port: Previous Carrier", value: data.port_current_carrier },
+    { label: "Port: Account Number", value: data.port_account_number },
+    { label: "Port: Transfer PIN", value: data.port_pin },
   ];
 
   return (

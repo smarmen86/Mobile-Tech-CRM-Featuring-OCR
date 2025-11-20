@@ -1,3 +1,4 @@
+
 // Data structure for the initial output from the Gemini analysis
 export interface ExtractedData {
   scan_id: string;
@@ -16,6 +17,10 @@ export interface ExtractedData {
   transaction_date: string | null;
   payment_breakdown: string | null;
   total_payment_amount: string | null;
+  // Manual Entry / Porting Fields
+  port_current_carrier?: string | null;
+  port_account_number?: string | null;
+  port_pin?: string | null;
 }
 
 // Data structure for a Device record in the CRM

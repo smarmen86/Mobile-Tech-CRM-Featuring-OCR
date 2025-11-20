@@ -12,39 +12,33 @@ export interface PaymentResponse {
     message: string;
 }
 
-const API_BASE_URL = 'http://localhost:3001/api';
-
-
 /**
- * Processes a payment by sending the details to the backend server.
+ * Processes a payment by simulating a gateway request.
  * @param details - The payment card and customer details.
- * @returns A promise that resolves with the payment response from the server.
+ * @returns A promise that resolves with the payment response.
  */
 export const processPayment = async (details: PaymentDetails): Promise<PaymentResponse> => {
-    console.log("Sending payment details to backend:", details);
+    console.log("Processing payment client-side:", details);
 
     if (!details.cardNumber || !details.expiryDate || !details.cvv || details.amount <= 0) {
         return Promise.reject(new Error("Invalid payment details provided."));
     }
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/process-payment`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(details),
-        });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Payment processing failed.' }));
-            throw new Error(errorData.message);
-        }
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-        return response.json();
-    } catch (error) {
-        if (error instanceof TypeError && error.message === 'Failed to fetch') {
-            throw new Error('Could not connect to the payment service. Please ensure the backend server is running.');
-        }
-        // Re-throw other errors for the component to handle
-        throw error;
+    // Basic validation simulation
+    if (details.cardNumber.length < 10) {
+        return {
+            success: false,
+            transactionId: '',
+            message: 'Card declined: Invalid card number.',
+        };
     }
+
+    return {
+        success: true,
+        transactionId: `sola_${crypto.randomUUID()}`,
+        message: `Payment of $${details.amount.toFixed(2)} successful.`,
+    };
 };

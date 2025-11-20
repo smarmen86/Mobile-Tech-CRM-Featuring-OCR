@@ -1,66 +1,106 @@
-// services/db.ts
+
 import { Customer, Transaction, ExtractedData } from '../types';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001/api';
 
-/**
- * A centralized fetch wrapper for API calls to the backend.
- * Handles network errors and non-OK responses gracefully.
- */
-const apiFetch = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+// Helper for fetch with timeout
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'An unknown server error occurred' }));
-            throw new Error(errorData.message || `Server responded with status: ${response.status}`);
-        }
-
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-            return response.json() as Promise<T>;
-        } else {
-            // Handle cases like 204 No Content
-            return Promise.resolve(undefined as unknown as T);
-        }
-
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
     } catch (error) {
-        if (error instanceof TypeError && error.message === 'Failed to fetch') {
-            throw new Error('Could not connect to the backend. Please ensure the server is running on http://localhost:3001.');
+        clearTimeout(id);
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(`Connection timed out. The backend server at ${API_BASE_URL} may be offline or sleeping.`);
         }
-        // Re-throw other errors (including the ones we threw from the !response.ok check)
+        // Propagate generic network errors (e.g., Failed to fetch)
         throw error;
     }
 };
 
-
 // --- Customer Management ---
 
-export const getCustomers = (): Promise<Customer[]> => apiFetch('/customers');
+export const getCustomers = async (): Promise<Customer[]> => {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/customers`);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Server Error (${response.status}): ${text}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error("getCustomers failed:", error);
+    throw new Error("Could not connect to the backend server. Ensure it is running on port 3001.");
+  }
+};
 
-export const getCustomerById = (id: string): Promise<Customer | undefined> => apiFetch(`/customers/${id}`);
+export const getCustomerById = async (id: string): Promise<Customer | undefined> => {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/customers/${id}`);
+    if (response.status === 404) return undefined;
+    if (!response.ok) {
+        throw new Error('Failed to fetch customer');
+    }
+    return response.json();
+  } catch (error) {
+    throw new Error("Failed to retrieve customer details.");
+  }
+};
 
 // --- Transaction Management ---
 
-export const getTransactions = (): Promise<Transaction[]> => apiFetch('/transactions');
-
-export const getTransactionsByCustomerId = (customerId: string): Promise<Transaction[]> => apiFetch(`/customers/${customerId}/transactions`);
-
-export const addTransaction = (transactionData: Omit<Transaction, 'id'>): Promise<Transaction> => {
-    return apiFetch('/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transactionData),
-    });
+export const getTransactions = async (): Promise<Transaction[]> => {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/transactions`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch transactions');
+    }
+    return response.json();
+  } catch (error) {
+    console.error("getTransactions failed:", error);
+    throw new Error("Failed to load transactions.");
+  }
 };
 
+export const getTransactionsByCustomerId = async (customerId: string): Promise<Transaction[]> => {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/customers/${customerId}/transactions`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch transactions for customer');
+  }
+  return response.json();
+};
+
+export const addTransaction = async (transactionData: Omit<Transaction, 'id'>): Promise<Transaction> => {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/transactions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(transactionData),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to create transaction');
+  }
+  return response.json();
+};
 
 // --- Data Extraction and Saving ---
 
-export const addCustomerFromExtraction = (data: ExtractedData): Promise<{ customer: Customer, transaction: Transaction }> => {
-    return apiFetch('/save-analysis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
+export const addCustomerFromExtraction = async (data: ExtractedData): Promise<{ customer: Customer, transaction: Transaction }> => {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/save-analysis`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to save analysis data to server');
+  }
+  return response.json();
 };

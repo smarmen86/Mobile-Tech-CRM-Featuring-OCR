@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { DashboardPage } from './pages/DashboardPage';
@@ -5,29 +6,34 @@ import { CustomersPage } from './pages/CustomersPage';
 import { CustomerDetailPage } from './pages/CustomerDetailPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { AnalyzerPage } from './pages/AnalyzerPage';
+import { LoginPage } from './components/LoginPage';
+import { getCurrentUser, logout, User } from './services/authService';
 
 export type Page = 'dashboard' | 'customers' | 'transactions' | 'analyzer' | 'customer_detail';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [activeCustomerId, setActiveCustomerId] = useState<string | null>(null);
-  const [isServerOnline, setIsServerOnline] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   useEffect(() => {
-    const checkServerStatus = async () => {
-        try {
-            const response = await fetch('http://localhost:3001/api/health');
-            if (response.ok) {
-                setIsServerOnline(true);
-            } else {
-                setIsServerOnline(false);
-            }
-        } catch (error) {
-            setIsServerOnline(false);
-        }
-    };
-    checkServerStatus();
+    const user = getCurrentUser();
+    setCurrentUser(user);
+    setIsAuthChecked(true);
   }, []);
+
+  const handleLoginSuccess = () => {
+    const user = getCurrentUser();
+    setCurrentUser(user);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setCurrentUser(null);
+    setCurrentPage('dashboard');
+    setActiveCustomerId(null);
+  };
 
   const navigateTo = (page: Page) => {
     setActiveCustomerId(null);
@@ -56,9 +62,22 @@ const App: React.FC = () => {
     }
   };
 
+  if (!isAuthChecked) {
+    return <div className="min-h-screen bg-slate-900" />; // Loading state
+  }
+
+  if (!currentUser) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans">
-       <Layout navigateTo={navigateTo} currentPage={currentPage} isServerOnline={isServerOnline}>
+       <Layout 
+          navigateTo={navigateTo} 
+          currentPage={currentPage} 
+          user={currentUser}
+          onLogout={handleLogout}
+       >
           {renderPage()}
        </Layout>
     </div>
