@@ -4,10 +4,22 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const { GoogleGenAI, Type } = require('@google/genai');
-const admin = require('firebase-admin');
+let admin; // will be required only if Firebase credentials are present
 const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+
+// Decode Firebase credentials from environment variable if present (for App Platform deployment)
+if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 && !fs.existsSync('./serviceAccountKey.json')) {
+    try {
+        const serviceAccountData = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf-8');
+        fs.writeFileSync('./serviceAccountKey.json', serviceAccountData);
+        console.log('✅ Firebase credentials decoded from environment variable');
+    } catch (error) {
+        console.error('❌ Failed to decode Firebase credentials:', error.message);
+    }
+}
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -77,9 +89,11 @@ const seedMockData = () => {
     });
 };
 
-// Try to Initialize Firebase
+// Try to Initialize Firebase (only if credentials file exists)
 try {
     if (fs.existsSync('./serviceAccountKey.json')) {
+        // require firebase-admin lazily so the app can run without the dependency when using in-memory DB
+        admin = require('firebase-admin');
         const serviceAccount = require('./serviceAccountKey.json');
         // Prevent re-initialization error
         if (!admin.apps.length) {
@@ -88,13 +102,13 @@ try {
             });
         }
         const firestore = admin.firestore();
-        
+
         console.log("✅ CONNECTED TO FIREBASE FIRESTORE");
         // We attempt to infer the project ID, otherwise default to the one provided in setup
         const projectId = serviceAccount.project_id || 'mobile-tech-995ac';
         console.log(`   Project ID: ${projectId} (Verified)`);
         dbMode = 'FIRESTORE';
-        
+
         // Firestore Implementations
         dbAdapter = {
             getCustomers: async () => {
@@ -126,6 +140,8 @@ try {
             },
             updateCustomer: async (id, updates) => {
                 await firestore.collection('customers').doc(id).update(updates);
+                const doc = await firestore.collection('customers').doc(id).get();
+                return doc.exists ? doc.data() : null;
             },
             saveTransaction: async (transaction) => {
                 await firestore.collection('transactions').doc(transaction.id).set(transaction);
@@ -174,7 +190,12 @@ try {
         saveCustomer: async (customer) => memoryDb.customers.set(customer.id, customer),
         updateCustomer: async (id, updates) => {
             const existing = memoryDb.customers.get(id);
-            if (existing) memoryDb.customers.set(id, { ...existing, ...updates });
+            if (existing) {
+                const updated = { ...existing, ...updates };
+                memoryDb.customers.set(id, updated);
+                return updated;
+            }
+            return null;
         },
         saveTransaction: async (transaction) => memoryDb.transactions.set(transaction.id, transaction),
         checkProcessedFile: async (id) => memoryDb.processed_files.has(id),
@@ -485,6 +506,13 @@ app.get('/api/customers/:id', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.put('/api/customers/:id', async (req, res) => {
+    try {
+        const updatedCustomer = await dbAdapter.updateCustomer(req.params.id, req.body);
+        updatedCustomer ? res.json(updatedCustomer) : res.status(404).json({ error: 'Customer not found' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/customers/:id/transactions', async (req, res) => {
     try {
         const transactions = await dbAdapter.getCustomerTransactions(req.params.id);
@@ -507,8 +535,22 @@ app.post('/api/transactions', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- Serve Frontend (Production) ---
+if (process.env.NODE_ENV === 'production') {
+    const frontendPath = path.join(__dirname, 'public');
+    
+    // Serve static files from the frontend build
+    app.use(express.static(frontendPath));
+    
+    // SPA fallback - serve index.html for all non-API routes
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+}
+
 app.listen(port, () => {
     console.log(`\n🚀 Mobile Tech CRM Backend running on http://localhost:${port}`);
     console.log(`   DB Mode: ${dbMode}`);
+    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`   Admin User: israel@klugmans.com (Available via mock data)\n`);
 });

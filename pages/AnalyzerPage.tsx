@@ -143,6 +143,10 @@ export const AnalyzerPage: React.FC<AnalyzerPageProps> = ({ navigateTo }) => {
     });
   };
 
+  const handleDataChange = (id: string, updatedData: ExtractedData) => {
+    setQueue(prev => prev.map(q => q.id === id ? { ...q, result: updatedData } : q));
+  };
+
   const handleClearQueue = () => {
     queue.forEach(item => URL.revokeObjectURL(item.previewUrl));
     setQueue([]);
@@ -475,6 +479,7 @@ export const AnalyzerPage: React.FC<AnalyzerPageProps> = ({ navigateTo }) => {
                                 onSave={() => handleSaveToCrm(item)}
                                 onRemove={() => handleRemoveItem(item.id)}
                                 onViewCustomer={() => navigateTo('customers')}
+                                onDataChange={(updatedData) => handleDataChange(item.id, updatedData)}
                                 isAnalyzing={isAnalyzing}
                             />
                         ))}

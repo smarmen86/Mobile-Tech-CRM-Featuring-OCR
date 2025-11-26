@@ -46,9 +46,11 @@ const App: React.FC = () => {
   };
 
   const renderPage = () => {
+    if (!currentUser) return null;
+    
     switch (currentPage) {
       case 'dashboard':
-        return <DashboardPage viewCustomer={viewCustomer} />;
+        return <DashboardPage viewCustomer={viewCustomer} user={currentUser} />;
       case 'customers':
         return <CustomersPage viewCustomer={viewCustomer} />;
       case 'customer_detail':
@@ -58,7 +60,7 @@ const App: React.FC = () => {
       case 'analyzer':
         return <AnalyzerPage navigateTo={navigateTo} />;
       default:
-        return <DashboardPage viewCustomer={viewCustomer} />;
+        return <DashboardPage viewCustomer={viewCustomer} user={currentUser} />;
     }
   };
 

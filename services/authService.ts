@@ -1,12 +1,36 @@
 
+export type UserRole = 'c-suite' | 'manager' | 'employee';
+
 export interface User {
   email: string;
   name: string;
   domain: string;
+  role: UserRole;
 }
 
 const STORAGE_KEY = 'crm_auth_user';
 const ALLOWED_DOMAINS = ['klugmans.com', 'kmobiletech.com'];
+
+// Role mapping based on email patterns
+const getRoleFromEmail = (email: string): UserRole => {
+  const lowerEmail = email.toLowerCase();
+  
+  // Specific user overrides
+  if (lowerEmail === 'abe@kmobiletech.com') {
+    return 'c-suite';
+  }
+  
+  // C-Suite: CEO, CFO, COO, CTO, owner, executive, president
+  if (lowerEmail.match(/(ceo|cfo|coo|cto|owner|executive|president)/)) {
+    return 'c-suite';
+  }
+  // Manager: manager, director, supervisor, lead
+  if (lowerEmail.match(/(manager|director|supervisor|lead)/)) {
+    return 'manager';
+  }
+  // Everyone else is employee
+  return 'employee';
+};
 
 export const login = (email: string): { success: boolean; user?: User; error?: string } => {
   const normalizedEmail = email.trim().toLowerCase();
@@ -22,7 +46,8 @@ export const login = (email: string): { success: boolean; user?: User; error?: s
   const user: User = {
     email: normalizedEmail,
     name: normalizedEmail.split('@')[0],
-    domain: domain
+    domain: domain,
+    role: getRoleFromEmail(normalizedEmail)
   };
 
   try {

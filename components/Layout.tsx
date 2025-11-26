@@ -91,7 +91,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, navigateTo, currentPag
             {/* User Profile Section */}
             {user && (
               <div className="p-4 border-t border-slate-700 bg-slate-800/80">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-xs font-bold text-white uppercase">
                     {user.name.substring(0, 2)}
                   </div>
@@ -112,6 +112,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, navigateTo, currentPag
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
                   </button>
+                </div>
+                <div className="mt-2 px-2 py-1 bg-slate-700/50 rounded-md">
+                  <p className="text-xs font-medium text-cyan-400 uppercase tracking-wide">
+                    {user.role === 'c-suite' ? '👔 Executive' : user.role === 'manager' ? '📊 Manager' : '👤 Employee'}
+                  </p>
                 </div>
               </div>
             )}

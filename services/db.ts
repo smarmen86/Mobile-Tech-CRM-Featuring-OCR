@@ -1,7 +1,9 @@
 
 import { Customer, Transaction, ExtractedData } from '../types';
 
-export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://kmt.klugmans.com/api';
+// In production, use relative path (same server). In dev, use env variable or default.
+export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 
+  (import.meta.env?.MODE === 'production' ? '/api' : 'https://kmt.klugmans.com/api');
 
 // Helper for fetch with timeout
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
@@ -47,6 +49,25 @@ export const getCustomerById = async (id: string): Promise<Customer | undefined>
     return response.json();
   } catch (error) {
     throw new Error("Failed to retrieve customer details.");
+  }
+};
+
+export const updateCustomer = async (id: string, customerData: Partial<Customer>): Promise<Customer> => {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/customers/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(customerData),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update customer');
+    }
+    return response.json();
+  } catch (error) {
+    console.error("updateCustomer failed:", error);
+    throw new Error("Failed to update customer information.");
   }
 };
 
