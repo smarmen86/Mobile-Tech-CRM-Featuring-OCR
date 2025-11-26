@@ -1,27 +1,26 @@
 # Multi-stage build for Mobile Tech CRM
 
 # Stage 1: Build frontend
-FROM node:18-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY package.json package-lock.json* ./
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app
+COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
 # Stage 2: Build backend and serve
-FROM node:18-alpine
-WORKDIR /app
-
-# Install backend dependencies
-COPY backend/package.json backend/package-lock.json* ./backend/
+FROM node:20-alpine
 WORKDIR /app/backend
+
+# Copy backend package files
+COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --production
 
 # Copy backend code
-COPY backend/ .
+COPY backend/ ./
 
 # Copy built frontend to serve from backend
-COPY --from=frontend-builder /app/dist /app/backend/public
+COPY --from=frontend-builder /app/dist ./public
 
 # Expose port
 EXPOSE 3001
