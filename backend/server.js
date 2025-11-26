@@ -436,11 +436,6 @@ const pollDriveFolder = async () => {
 
 // --- API Endpoints ---
 
-// Root Endpoint for easy checking
-app.get('/', (req, res) => {
-    res.send(`Mobile Tech CRM Backend is RUNNING. Mode: ${dbMode}`);
-});
-
 app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'ok', dbMode: dbMode, cacheSize: processedFilesCache.size });
 });
@@ -536,6 +531,7 @@ app.post('/api/transactions', async (req, res) => {
 });
 
 // --- Serve Frontend (Production) ---
+// This must be AFTER all API routes
 if (process.env.NODE_ENV === 'production') {
     const frontendPath = path.join(__dirname, 'public');
     
@@ -544,7 +540,17 @@ if (process.env.NODE_ENV === 'production') {
     
     // SPA fallback - serve index.html for all non-API routes
     app.get('*', (req, res) => {
-        res.sendFile(path.join(frontendPath, 'index.html'));
+        const indexPath = path.join(frontendPath, 'index.html');
+        if (fs.existsSync(indexPath)) {
+            res.sendFile(indexPath);
+        } else {
+            res.status(500).send('Frontend not built. Run `npm run build` first.');
+        }
+    });
+} else {
+    // Development mode - show backend is running
+    app.get('/', (req, res) => {
+        res.send(`Mobile Tech CRM Backend is RUNNING. Mode: ${dbMode}`);
     });
 }
 
