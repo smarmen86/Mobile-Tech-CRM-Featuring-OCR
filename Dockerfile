@@ -3,31 +3,35 @@
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app
-COPY package.json package-lock.json ./
+
+# Install dependencies
+COPY package*.json ./
 RUN npm ci
+
+# Copy source and build
 COPY . .
 RUN npm run build
 
-# Stage 2: Build backend and serve
+# Stage 2: Production server
 FROM node:20-alpine
-WORKDIR /app/backend
+WORKDIR /app
 
-# Copy backend package files
-COPY backend/package.json backend/package-lock.json ./
-RUN npm ci --production
+# Install backend dependencies
+COPY backend/package*.json ./
+RUN npm ci --omit=dev
 
-# Copy backend code
+# Copy backend source
 COPY backend/ ./
 
-# Copy built frontend to serve from backend
+# Copy built frontend
 COPY --from=frontend-builder /app/dist ./public
 
 # Expose port
 EXPOSE 3001
 
-# Environment variables
+# Environment
 ENV NODE_ENV=production
 ENV PORT=3001
 
-# Start backend server (which will also serve the frontend)
+# Start server
 CMD ["node", "server.js"]
